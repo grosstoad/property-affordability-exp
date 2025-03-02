@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,13 +19,6 @@ type BorrowingPowerModalProps = {
   isFirstHomeBuyer: boolean
   onCalculate: (results: any) => void
 }
-
-type FormData = {
-  income: number;
-  expenses: number;
-  dependents: number;
-  [key: string]: number;
-};
 
 const RadioCard = ({
   children,
@@ -157,7 +149,7 @@ export function BorrowingPowerModal({
     onClose();
   }
 
-  const FrequencySelect = ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
+  const FrequencySelect = ({ value, onChange, id }: { value: string, onChange: (value: string) => void, id: string }) => (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="w-full h-10">
         <SelectValue placeholder="Frequency" />
@@ -198,6 +190,7 @@ export function BorrowingPowerModal({
           <FrequencySelect 
             value={frequency} 
             onChange={onFrequencyChange}
+            id={`${id}-frequency`}
           />
         </div>
       </div>
