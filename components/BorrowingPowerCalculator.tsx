@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { calculateBorrowingPowerIterative, CalculationResult } from '@/utils/calculationUtils';
 import BorrowingPowerCalculationDetails from './BorrowingPowerCalculationDetails';
 import FinancialCalculationsSummary from './FinancialCalculationsSummary';
-import { formatCurrency as formatCurrencyUtil } from '@/utils/formatters';
 
 // Helper function to parse currency input
 const parseCurrency = (value: string): number => {

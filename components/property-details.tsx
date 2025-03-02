@@ -18,12 +18,30 @@ import { LoanDetailsModal } from "./LoanDetailsModal"
 import { calculateEnhancedStampDuty } from '@/utils/calculationUtils'
 import { Badge } from '@/components/ui/badge'
 import { RadioCard } from '@/components/ui/radio-card'
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { calculateLvrTier } from "@/utils/rateUtils"
 
-type PropertyDetailsProps = {
+// Update the type to be more specific
+export type PropertyData = {
+  bedrooms: number;
+  bathrooms: number;
+  parking: number;
+  landSize: number;
+  inspection: string;
+  auction: string;
+  listingUrl: string;
+  valuation: {
+    low: string;
+    mid: string;
+    high: string;
+  };
+};
+
+export type PropertyDetailsProps = {
   address?: string;
-  propertyData?: any;
+  propertyData?: PropertyData;
   setShowBorrowingPowerModal: (show: boolean) => void;
-  // Add any other props here
 };
 
 export default function PropertyDetails({
@@ -112,7 +130,7 @@ export default function PropertyDetails({
   // Update payment when loan details change
   useEffect(() => {
     updateMonthlyPayment()
-  }, [loanAmount, interestRate, loanTerm, repaymentType, interestRateType, fixedPeriod, interestOnlyPeriod])
+  }, [loanAmount, interestRate, loanTerm, repaymentType, interestRateType, fixedPeriod, interestOnlyPeriod, updateMonthlyPayment])
   
   // Handle loan details update from modal
   const handleLoanDetailsUpdate = (details: {
