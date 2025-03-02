@@ -1,6 +1,4 @@
-# Property Affordability Calculator
-
-A Next.js application that helps users calculate property affordability with integrated mortgage broker features.
+# Property Affordability Experiment
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 

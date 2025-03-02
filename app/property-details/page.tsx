@@ -1,26 +1,10 @@
 "use client"
 
+import PropertyDetails from "@/property-details"
 import { useState } from "react"
-import PropertyDetails from "@/components/property-details"
-import { BorrowingPowerModal } from "@/components/BorrowingPowerModal"
 
 export default function PropertyDetailsPage() {
   const [showBorrowingPowerModal, setShowBorrowingPowerModal] = useState(false)
   
-  return (
-    <>
-      <PropertyDetails setShowBorrowingPowerModal={setShowBorrowingPowerModal} />
-      {showBorrowingPowerModal && (
-        <BorrowingPowerModal 
-          isOpen={showBorrowingPowerModal}
-          onClose={() => setShowBorrowingPowerModal(false)}
-          propertyValue={0}
-          deposit={0}
-          state="VIC"
-          isFirstHomeBuyer={false}
-          onCalculate={() => {}}
-        />
-      )}
-    </>
-  )
+  return <PropertyDetails setShowBorrowingPowerModal={setShowBorrowingPowerModal} />
 } 
