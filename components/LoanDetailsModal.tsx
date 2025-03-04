@@ -6,13 +6,13 @@ import { RadioGroup } from "@/components/ui/radio-group"
 import { Button } from "@/components/ui/button"
 import { RadioCard } from "@/components/ui/radio-card"
 import { 
-  LvrTier, 
   InterestRateType, 
   RepaymentType, 
   FeatureType, 
   LoanPurpose 
 } from "@/types/rateTypes"
-import { getRateByConfiguration, calculateLvrTier } from "@/utils/rateRepository"
+import { findBestRate } from "@/utils/newRateRepository"
+import { getLvrRangeFromValue, LoanProductType, RepaymentType as NewRepaymentType, BorrowerType } from "@/types/rates"
 
 type LoanDetailsModalProps = {
   isOpen: boolean;
@@ -91,36 +91,63 @@ export function LoanDetailsModal({
   const [fixedPeriod, setFixedPeriod] = useState<number>(1)
   const [interestOnlyPeriod, setInterestOnlyPeriod] = useState<number>(1)
   
-  // Calculate LVR tier
-  const lvrTier = calculateLvrTier(loanAmount, propertyValue)
-  
   // Current rates based on selections
   const [currentRate, setCurrentRate] = useState<number>(0)
   const [currentComparisonRate, setCurrentComparisonRate] = useState<number>(0)
   
   // Update rates when selections change
   useEffect(() => {
-    // Map the fixed period selection to the correct interest rate type
-    let effectiveInterestRateType = interestRateType
+    // Calculate LVR
+    const lvr = (loanAmount / propertyValue) * 100;
+    
+    // Map old types to new types
+    let effectiveInterestRateType = interestRateType;
     if (interestRateType !== InterestRateType.VARIABLE) {
       if (fixedPeriod === 1) effectiveInterestRateType = InterestRateType.FIXED_1_YEAR
       else if (fixedPeriod === 2) effectiveInterestRateType = InterestRateType.FIXED_2_YEAR
       else if (fixedPeriod === 3) effectiveInterestRateType = InterestRateType.FIXED_3_YEAR
     }
     
-    const rateInfo = getRateByConfiguration(
-      lvrTier,
-      effectiveInterestRateType,
-      repaymentType,
-      featureType,
-      loanPurpose
-    )
+    // Convert to new rate system types
+    const productType: LoanProductType = effectiveInterestRateType === InterestRateType.VARIABLE 
+      ? 'variable' 
+      : effectiveInterestRateType === InterestRateType.FIXED_1_YEAR 
+        ? 'fixed_1' 
+        : effectiveInterestRateType === InterestRateType.FIXED_2_YEAR 
+          ? 'fixed_2' 
+          : 'fixed_3';
     
-    if (rateInfo) {
-      setCurrentRate(rateInfo.rate)
-      setCurrentComparisonRate(rateInfo.comparisonRate)
+    const newRepaymentType: NewRepaymentType = repaymentType === RepaymentType.PRINCIPAL_AND_INTEREST 
+      ? 'principal_and_interest' 
+      : 'interest_only';
+    
+    const borrowerType: BorrowerType = loanPurpose === LoanPurpose.OWNER 
+      ? 'owner_occupier' 
+      : 'investor';
+    
+    const hasOffset = featureType === FeatureType.OFFSET;
+    const hasRedraw = featureType === FeatureType.REDRAW;
+    
+    const bestRate = findBestRate(
+      lvr,
+      productType,
+      newRepaymentType,
+      borrowerType,
+      loanAmount,
+      false, // isFirstHomeBuyer
+      hasOffset,
+      hasRedraw
+    );
+    
+    if (bestRate) {
+      setCurrentRate(bestRate.rate);
+      setCurrentComparisonRate(bestRate.comparisonRate);
+    } else {
+      // Default rates if no match found
+      setCurrentRate(5.74);
+      setCurrentComparisonRate(5.65);
     }
-  }, [lvrTier, interestRateType, repaymentType, featureType, loanPurpose, fixedPeriod])
+  }, [loanAmount, propertyValue, interestRateType, repaymentType, featureType, loanPurpose, fixedPeriod])
   
   // Handle save changes
   const handleSaveChanges = () => {
@@ -242,10 +269,6 @@ export function LoanDetailsModal({
           
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <div className="flex justify-between items-center">
-              <span className="font-medium">Current LVR tier:</span>
-              <span>{lvrTier}</span>
-            </div>
-            <div className="flex justify-between items-center mt-2">
               <span className="font-medium">Interest rate:</span>
               <span>{currentRate.toFixed(2)}% p.a.</span>
             </div>

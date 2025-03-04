@@ -1,6 +1,5 @@
 import { calculateStampDuty as calculateStampDutyFromUtils } from './stampDutyUtils';
 import { LoanPurpose } from '@/types/rateTypes';
-import { determineInterestRate } from './rateUtils';
 import { 
   INCOME_SHADING_RULES, 
   DEBT_SHADING_RULES,
@@ -9,6 +8,8 @@ import {
   getExpenseAmount,
   getInterestBuffer
 } from './shadingRules';
+import { findBestRate } from './newRateRepository';
+import { getLvrRangeFromValue, LoanProductType, RepaymentType, BorrowerType } from '@/types/rates';
 
 // Types for calculation inputs
 export type FinancialInput = {
@@ -292,14 +293,26 @@ export const calculateBorrowingPower = (input: CalculationInput): CalculationRes
   const initialLVR = input.deposit > 0 ? 
     (1 - (input.deposit / input.propertyValue)) * 100 : 80;
   
-  // Get the LVR-specific interest rate
+  // Get the LVR-specific interest rate using the new rate system
   // If interestRate is provided in the input, use that instead of calculating from LVR
-  const lvrBasedRate = input.interestRate || determineInterestRate(
-    initialLVR,
-    input.baseRate,
-    input.isFirstHomeBuyer,
-    input.isInvestor
-  );
+  let lvrBasedRate = input.interestRate;
+  
+  if (!lvrBasedRate) {
+    const productType: LoanProductType = 'variable';
+    const repaymentType: RepaymentType = 'principal_and_interest';
+    const borrowerType: BorrowerType = input.isInvestor ? 'investor' : 'owner_occupier';
+    
+    const bestRate = findBestRate(
+      initialLVR,
+      productType,
+      repaymentType,
+      borrowerType,
+      input.propertyValue - input.deposit,
+      input.isFirstHomeBuyer
+    );
+    
+    lvrBasedRate = bestRate ? bestRate.rate : input.baseRate;
+  }
   
   // Calculate maximum loan using assessment rate (LVR-based rate + buffer)
   const effectiveRate = lvrBasedRate + INTEREST_BUFFER;
@@ -454,13 +467,22 @@ export const calculateLoanServiceability = (
   // Calculate LVR for the loan amount
   const loanToValueRatio = (loanAmount / input.propertyValue) * 100;
   
-  // Get the LVR-specific interest rate
-  const lvrBasedRate = determineInterestRate(
+  // Get the LVR-specific interest rate using the new rate system
+  let lvrBasedRate;
+  const productType: LoanProductType = 'variable';
+  const repaymentType: RepaymentType = 'principal_and_interest';
+  const borrowerType: BorrowerType = input.isInvestor ? 'investor' : 'owner_occupier';
+  
+  const bestRate = findBestRate(
     loanToValueRatio,
-    input.baseRate,
-    input.isFirstHomeBuyer,
-    input.isInvestor
+    productType,
+    repaymentType,
+    borrowerType,
+    loanAmount,
+    input.isFirstHomeBuyer
   );
+  
+  lvrBasedRate = bestRate ? bestRate.rate : input.baseRate;
   
   // Calculate repayment with buffer
   const effectiveRate = lvrBasedRate + INTEREST_BUFFER;
@@ -497,13 +519,22 @@ export const calculateBorrowingPowerIterative = (input: CalculationInput): Calcu
   let currentLVR = input.deposit > 0 ? 
     (1 - (input.deposit / input.propertyValue)) * 100 : 80;
   
-  // Get the initial LVR-specific rate
-  let currentRate = determineInterestRate(
+  // Get the initial LVR-specific rate using the new rate system
+  let currentRate;
+  const productType: LoanProductType = 'variable';
+  const repaymentType: RepaymentType = 'principal_and_interest';
+  const borrowerType: BorrowerType = input.isInvestor ? 'investor' : 'owner_occupier';
+  
+  const initialBestRate = findBestRate(
     currentLVR,
-    input.baseRate,
-    input.isFirstHomeBuyer,
-    input.isInvestor
+    productType,
+    repaymentType,
+    borrowerType,
+    input.propertyValue - input.deposit,
+    input.isFirstHomeBuyer
   );
+  
+  currentRate = initialBestRate ? initialBestRate.rate : input.baseRate;
   
   let previousMaxLoan = 0;
   let iterations = 0;
@@ -557,13 +588,17 @@ export const calculateBorrowingPowerIterative = (input: CalculationInput): Calcu
       maxLoan: result.maxLoan
     });
     
-    // Determine new rate based on calculated LVR
-    const newRate = determineInterestRate(
+    // Determine new rate based on calculated LVR using the new rate system
+    const newBestRate = findBestRate(
       result.loanToValueRatio,
-      input.baseRate,
-      input.isFirstHomeBuyer,
-      input.isInvestor
+      productType,
+      repaymentType,
+      borrowerType,
+      result.maxLoan,
+      input.isFirstHomeBuyer
     );
+    
+    const newRate = newBestRate ? newBestRate.rate : input.baseRate;
     
     console.log(`DEBUG_ITERATION_${iterations}_NEW_RATE:`, { 
       newRate,
